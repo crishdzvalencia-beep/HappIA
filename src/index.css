@@ -1,0 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-brand-primary: #FFB703;
+  --color-brand-primary-soft: #FFF3CC;
+  --color-secondary-blue: #5AA9FF;
+  --color-secondary-mint: #67D6B3;
+  --color-secondary-coral: #FF8A7A;
+  --color-accent-lilac: #A78BFA;
+  --color-accent-peach: #FFC6A8;
+  --color-background: #FFFDF8;
+  --color-background-soft: #F8FAFC;
+  --color-surface: #FFFFFF;
+  --color-surface-alt: #FFF8E8;
+  --color-border-custom: #E8EDF3;
+  --color-text-primary: #1F2937;
+  --color-text-secondary: #667085;
+  --color-success: #34C759;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+
+  --radius-chip: 16px;
+  --radius-btn: 18px;
+  --radius-card: 24px;
+  --radius-container: 28px;
+
+  --shadow-soft: 0 8px 24px rgba(31, 41, 55, 0.08);
+}
+
+@layer base {
+  body {
+    @apply bg-background-soft text-text-primary font-sans antialiased selection:bg-brand-primary/20;
+    background-image: radial-gradient(var(--color-brand-primary) 0.5px, transparent 0.5px);
+    background-size: 24px 24px;
+  }
+  
+  h1 { @apply text-[32px] font-bold leading-tight; }
+  h2 { @apply text-[24px] font-bold leading-tight; }
+  h3 { @apply text-[20px] font-bold leading-tight; }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-brand-primary text-text-primary font-bold py-4 px-6 rounded-btn shadow-soft hover:opacity-90 transition-all active:scale-95 text-center;
+  }
+  
+  .card-premium {
+    @apply bg-surface border border-border-custom rounded-card p-6 shadow-soft;
+  }
+}
