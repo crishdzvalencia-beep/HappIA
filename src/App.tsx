@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Zap, Moon, Heart, Wind, ChevronRight, Clock, Sparkles } from 'lucide-react';
+import { Zap, Moon, Heart, Wind, ChevronRight, Clock, Sparkles, Star, Info } from 'lucide-react';
 import { Layout } from './components/Layout';
 import { Button } from './components/Button';
 import { Card } from './components/Card';
 import { MOMENTS, ACTIVITIES } from './constants';
 import { Moment, Activity, UserState } from './types';
 import { cn } from './lib/utils';
+import { generateCraft, Craft as AICraft } from './services/geminiService';
 
-type AppState = 'welcome' | 'moment' | 'activity' | 'done';
+type AppState = 'welcome' | 'moment' | 'activity' | 'done' | 'crafts';
 
 interface Toast {
   message: string;
@@ -22,6 +23,8 @@ export default function App() {
   const [history, setHistory] = useState<string[]>([]);
   const [toast, setToast] = useState<Toast | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [aiCraft, setAiCraft] = useState<AICraft | null>(null);
+  const [craftTopic, setCraftTopic] = useState('');
   const [userState, setUserState] = useState<UserState>({
     favorites: [],
     completedCount: 0,
@@ -84,6 +87,10 @@ export default function App() {
   };
 
   const handleAnotherIdea = () => {
+    if (appState === 'crafts') {
+      handleGenerateCraft();
+      return;
+    }
     if (!selectedMoment) return;
     setIsLoading(true);
     setTimeout(() => {
@@ -122,10 +129,101 @@ export default function App() {
     setAppState('done');
   };
 
+  const handleGenerateCraft = async () => {
+    setIsLoading(true);
+    const result = await generateCraft(craftTopic || "general");
+    if (result) {
+      setAiCraft(result);
+      setAppState('crafts');
+    } else {
+      showToast("Vaya, la magia ha fallado. Inténtalo de nuevo.", "info");
+    }
+    setIsLoading(false);
+  };
+
+  const renderCrafts = () => (
+    <motion.div
+      key="crafts"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="pt-6 pb-8"
+    >
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <p className="text-brand-primary font-black uppercase tracking-widest text-sm mb-1">Manualidades con IA</p>
+          <div className="h-1 w-12 bg-brand-primary rounded-full" />
+        </div>
+        <button onClick={resetFlow} className="p-2 text-text-secondary"><ChevronRight className="w-6 h-6 rotate-180" /></button>
+      </div>
+
+      {!aiCraft || isLoading ? (
+        <Card className="p-8 text-center bg-surface-alt border-dashed border-2 border-brand-primary/20">
+          <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center shadow-soft mx-auto mb-6">
+            <Sparkles className={cn("w-10 h-10 text-brand-primary", isLoading && "animate-spin")} />
+          </div>
+          <h3 className="text-xl font-black mb-4">¿Qué materiales tienes?</h3>
+          <p className="text-text-secondary mb-8 font-medium">O simplemente deja que la IA te sorprenda.</p>
+          <input 
+            type="text" 
+            placeholder="Ej: cartón, tapones, pintura..."
+            value={craftTopic}
+            onChange={(e) => setCraftTopic(e.target.value)}
+            className="w-full p-4 rounded-2xl border-2 border-border-custom focus:border-brand-primary outline-none mb-6 text-center"
+          />
+          <Button fullWidth onClick={handleGenerateCraft} disabled={isLoading}>
+            {isLoading ? "Creando magia..." : "Generar Manualidad"}
+          </Button>
+        </Card>
+      ) : (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <Card className="mb-8 overflow-hidden border-none shadow-soft relative p-8">
+            <div className="absolute top-0 left-0 w-full h-2 bg-brand-primary opacity-20" />
+            <div className="flex flex-wrap items-center gap-3 mb-6">
+              <div className="px-4 py-2 bg-background-soft rounded-xl text-sm font-black text-text-secondary flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                {aiCraft.duration}
+              </div>
+              <div className="px-4 py-2 bg-brand-primary-soft rounded-xl text-sm font-black text-brand-primary flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                {aiCraft.materials.join(', ')}
+              </div>
+            </div>
+            <h2 className="text-3xl font-black mb-6 text-text-primary leading-tight">{aiCraft.title}</h2>
+            <div className="space-y-8 mb-4">
+              {aiCraft.steps.map((step, idx) => (
+                <div key={idx} className="flex gap-5">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-2xl bg-brand-primary text-text-primary flex items-center justify-center font-black text-lg shadow-sm">
+                    {idx + 1}
+                  </div>
+                  <p className="text-text-primary text-lg font-bold leading-snug pt-1">{step}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+          
+          <div className="space-y-4">
+            <Button fullWidth size="xl" onClick={() => setAppState('done')}>
+              ¡Hecho! ✅
+            </Button>
+            <Button variant="secondary" fullWidth size="lg" onClick={() => setAiCraft(null)}>
+              Probar otro tema
+            </Button>
+            <button onClick={resetFlow} className="w-full py-4 text-text-secondary font-black uppercase tracking-widest text-xs">
+              Volver al inicio
+            </button>
+          </div>
+        </motion.div>
+      )}
+    </motion.div>
+  );
+
   const resetFlow = () => {
     setSelectedMoment(null);
     setCurrentActivity(null);
     setHistory([]);
+    setAiCraft(null);
+    setCraftTopic('');
     setAppState('welcome');
   };
 
@@ -163,6 +261,16 @@ export default function App() {
         className="text-xl py-6"
       >
         Empezar
+      </Button>
+
+      <Button 
+        variant="secondary"
+        size="lg" 
+        fullWidth 
+        onClick={() => setAppState('crafts')}
+        className="mt-4 text-lg py-5 border-2 border-border-custom bg-surface-alt"
+      >
+        Manualidades Creativas ✨
       </Button>
     </motion.div>
   );
@@ -318,7 +426,6 @@ export default function App() {
       <p className="text-text-secondary text-xl mb-12 px-4 font-medium leading-relaxed">
         Lo importante es este ratito juntos.
       </p>
-
       <div className="w-full space-y-4">
         <Button size="xl" fullWidth onClick={() => setAppState('welcome')}>
           Volver mañana
@@ -333,125 +440,6 @@ export default function App() {
     </motion.div>
   );
 
-  const renderFavorites = () => (
-    <motion.div
-      key="favorites"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="pt-6 pb-8"
-    >
-      <h2 className="text-2xl font-black mb-2 text-text-primary">Guardados</h2>
-      <p className="text-text-secondary mb-8 font-medium">Tus ideas favoritas, siempre a mano.</p>
-      
-      {userState.favorites.length === 0 ? (
-        <div className="flex flex-col items-center text-center py-16 px-8 bg-surface-alt rounded-[40px] border-2 border-dashed border-brand-primary/20">
-          <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center shadow-soft mb-6">
-            <Bookmark className="w-10 h-10 text-brand-primary/30" />
-          </div>
-          <h3 className="text-xl font-black mb-3">Aún no has guardado ninguna</h3>
-          <p className="text-text-secondary mb-8 font-medium">Cuando guardes una actividad, aparecerá aquí 💛</p>
-          <Button onClick={() => setAppState('moment')}>Buscar ideas</Button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4">
-          {userState.favorites.map((id) => {
-            const activity = ACTIVITIES.find(a => a.id === id);
-            if (!activity) return null;
-            return (
-              <Card key={activity.id} className="p-5 group hover:border-brand-primary transition-all cursor-pointer" onClick={() => {
-                setCurrentActivity(activity);
-                setAppState('activity');
-              }}>
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-brand-primary bg-brand-primary-soft px-2 py-0.5 rounded-md">
-                        {MOMENTS.find(m => m.id === activity.moment)?.label || 'Idea'}
-                      </span>
-                      <span className="text-[10px] font-bold text-text-secondary flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> {activity.duration}
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-black text-text-primary group-hover:text-brand-primary transition-colors leading-tight">{activity.title}</h3>
-                  </div>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleFavorite(activity.id);
-                    }}
-                    className="p-2 text-secondary-coral hover:bg-secondary-coral/10 rounded-xl transition-colors"
-                  >
-                    <Bookmark className="w-5 h-5" fill="currentColor" />
-                  </button>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-    </motion.div>
-  );
-
-  const renderScreenFree = () => (
-    <motion.div
-      key="screen-free"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="pt-6 pb-8"
-    >
-      <div className="flex items-center gap-3 mb-2">
-        <div className="w-10 h-10 bg-secondary-mint/10 rounded-xl flex items-center justify-center text-secondary-mint">
-          <Smartphone className="w-6 h-6" />
-        </div>
-        <h2 className="text-2xl font-black text-text-primary">Modo sin pantalla</h2>
-      </div>
-      <p className="text-text-secondary mb-8 font-medium">Ideas para jugar mirando a tu peque, no a la pantalla 💛</p>
-      
-      <div className="grid grid-cols-1 gap-6">
-        {SCREEN_FREE_ACTIVITIES.map((activity) => (
-          <Card key={activity.id} className="p-6 border-none bg-surface shadow-soft relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1.5 h-full bg-secondary-mint" />
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-xl font-black text-text-primary leading-tight">{activity.title}</h3>
-              <div className="px-3 py-1 bg-background-soft rounded-lg text-[10px] font-black text-text-secondary uppercase tracking-widest">
-                {activity.duration}
-              </div>
-            </div>
-            <p className="text-text-secondary mb-6 font-medium leading-relaxed italic">"{activity.description}"</p>
-            <div className="space-y-4 mb-6">
-              {activity.steps.map((step, idx) => (
-                <div key={idx} className="flex gap-3">
-                  <div className="w-6 h-6 rounded-lg bg-secondary-mint/10 text-secondary-mint flex items-center justify-center font-black text-xs flex-shrink-0">
-                    {idx + 1}
-                  </div>
-                  <p className="text-sm font-bold text-text-primary leading-snug">{step}</p>
-                </div>
-              ))}
-            </div>
-            <Button 
-              variant="outline" 
-              fullWidth 
-              size="sm"
-              className="rounded-2xl font-black border-secondary-mint/30 text-secondary-mint hover:bg-secondary-mint/5"
-              onClick={() => {
-                setCurrentActivity(activity);
-                setAppState('activity');
-              }}
-            >
-              Ver en grande
-            </Button>
-          </Card>
-        ))}
-      </div>
-      
-      <div className="mt-10 p-6 bg-surface-alt rounded-card border border-brand-primary/10 text-center">
-        <p className="text-sm font-bold text-text-secondary leading-relaxed">
-          Estas actividades están diseñadas para ser memorizadas en segundos. ¡Suelta el móvil y a jugar!
-        </p>
-      </div>
-    </motion.div>
-  );
-
   return (
     <Layout 
       showNav={false}
@@ -459,6 +447,7 @@ export default function App() {
       <AnimatePresence mode="wait">
         {appState === 'welcome' && renderWelcome()}
         {appState === 'moment' && renderMomentSelection()}
+        {appState === 'crafts' && renderCrafts()}
         {appState === 'activity' && renderActivity()}
         {appState === 'done' && renderDone()}
       </AnimatePresence>
