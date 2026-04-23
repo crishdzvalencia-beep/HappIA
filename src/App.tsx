@@ -7,17 +7,19 @@ import { Card } from './components/Card';
 import { MOMENTS, ACTIVITIES } from './constants';
 import { Moment, Activity, UserState } from './types';
 import { cn } from './lib/utils';
-import { generateCraft, Craft as AICraft } from './services/geminiService';
+import { generateCraft, Craft as AICraft, isApiKeyConfigured } from './services/geminiService';
 
-type AppState = 'welcome' | 'moment' | 'activity' | 'done' | 'crafts';
+type AppState = 'welcome' | 'moment' | 'activity' | 'done' | 'crafts' | 'error';
 
 interface Toast {
   message: string;
-  type: 'success' | 'info';
+  type: 'success' | 'info' | 'error';
 }
 
 export default function App() {
   const [appState, setAppState] = useState<AppState>('welcome');
+  const [errorHeader, setErrorHeader] = useState<string>('');
+  const [errorDetail, setErrorDetail] = useState<string>('');
   const [selectedMoment, setSelectedMoment] = useState<Moment | null>(null);
   const [currentActivity, setCurrentActivity] = useState<Activity | null>(null);
   const [history, setHistory] = useState<string[]>([]);
@@ -29,6 +31,13 @@ export default function App() {
     favorites: [],
     completedCount: 0,
   });
+
+  // Global check for API key on mount to prevent hidden failures
+  useEffect(() => {
+    if (!isApiKeyConfigured()) {
+      console.warn("VITE_GEMINI_API_KEY no detectada. Las manualidades con IA no funcionarán.");
+    }
+  }, []);
 
   // Load user state from localStorage (only for completed count if needed, but we can keep it simple)
   useEffect(() => {
@@ -130,15 +139,34 @@ export default function App() {
   };
 
   const handleGenerateCraft = async () => {
-    setIsLoading(true);
-    const result = await generateCraft(craftTopic || "general");
-    if (result) {
-      setAiCraft(result);
-      setAppState('crafts');
-    } else {
-      showToast("Vaya, la magia ha fallado. Inténtalo de nuevo.", "info");
+    if (!isApiKeyConfigured()) {
+      setErrorHeader("Falta configurar la API key");
+      setErrorDetail("Añade VITE_GEMINI_API_KEY en las variables de entorno de Vercel para activar las manualidades.");
+      setAppState('error');
+      return;
     }
-    setIsLoading(false);
+
+    setIsLoading(true);
+    try {
+      const result = await generateCraft(craftTopic || "general");
+      if (result) {
+        setAiCraft(result);
+        setAppState('crafts');
+      } else {
+        showToast("No hemos podido generar la manualidad", "info");
+      }
+    } catch (error: any) {
+      if (error.message === "MISSING_API_KEY") {
+        setErrorHeader("Falta configurar la API key");
+        setErrorDetail("Configura VITE_GEMINI_API_KEY en Vercel.");
+      } else {
+        setErrorHeader("Gemini ha fallado");
+        setErrorDetail("Ha ocurrido un error inesperado al intentar generar contenido.");
+      }
+      setAppState('error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const renderCrafts = () => (
@@ -440,6 +468,26 @@ export default function App() {
     </motion.div>
   );
 
+  const renderError = () => (
+    <motion.div
+      key="error"
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="flex flex-col items-center text-center pt-20 pb-8"
+    >
+      <div className="w-32 h-32 bg-secondary-coral/20 rounded-full flex items-center justify-center mb-8">
+        <span className="text-6xl text-secondary-coral">⚠️</span>
+      </div>
+      <h2 className="text-2xl font-black mb-4 text-text-primary">{errorHeader || "Algo ha salido mal"}</h2>
+      <p className="text-text-secondary text-lg mb-12 px-6 font-medium leading-relaxed">
+        {errorDetail || "Ha ocurrido un error al conectar con Gemini."}
+      </p>
+      <Button size="xl" fullWidth onClick={resetFlow}>
+        Volver al inicio
+      </Button>
+    </motion.div>
+  );
+
   return (
     <Layout 
       showNav={false}
@@ -450,6 +498,7 @@ export default function App() {
         {appState === 'crafts' && renderCrafts()}
         {appState === 'activity' && renderActivity()}
         {appState === 'done' && renderDone()}
+        {appState === 'error' && renderError()}
       </AnimatePresence>
 
       {/* Toast Notification */}
