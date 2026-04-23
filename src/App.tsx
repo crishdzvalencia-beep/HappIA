@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Zap, Moon, Heart, Wind, ChevronRight, Clock, Sparkles, Star, Info } from 'lucide-react';
+import { Zap, Moon, Heart, Wind, ChevronRight, Clock, Sparkles, Star, Info, ArrowLeft } from 'lucide-react';
 import { Layout } from './components/Layout';
 import { Button } from './components/Button';
 import { Card } from './components/Card';
@@ -169,6 +169,18 @@ export default function App() {
     }
   };
 
+  const renderBackButton = () => (
+    <motion.button
+      whileHover={{ x: -4, scale: 1.02 }}
+      whileTap={{ scale: 0.95 }}
+      onClick={resetFlow}
+      className="group flex items-center gap-2 px-5 py-2.5 text-sm font-black text-brand-primary bg-brand-primary-soft rounded-2xl cursor-pointer shadow-sm hover:shadow-soft hover:bg-brand-primary hover:text-white transition-all mb-8 border-b-4 border-black/5"
+    >
+      <ArrowLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
+      <span>Atrás</span>
+    </motion.button>
+  );
+
   const renderCrafts = () => (
     <motion.div
       key="crafts"
@@ -177,12 +189,12 @@ export default function App() {
       exit={{ opacity: 0 }}
       className="pt-6 pb-8"
     >
+      {renderBackButton()}
       <div className="mb-6 flex items-center justify-between">
-        <div>
+        <div className="text-right ml-auto">
           <p className="text-brand-primary font-black uppercase tracking-widest text-sm mb-1">Manualidades con IA</p>
-          <div className="h-1 w-12 bg-brand-primary rounded-full" />
+          <div className="h-1 w-12 bg-brand-primary rounded-full ml-auto" />
         </div>
-        <button onClick={resetFlow} className="p-2 text-text-secondary"><ChevronRight className="w-6 h-6 rotate-180" /></button>
       </div>
 
       {!aiCraft || isLoading ? (
@@ -311,6 +323,7 @@ export default function App() {
       exit={{ opacity: 0 }}
       className="pt-6 pb-8"
     >
+      {renderBackButton()}
       <h2 className="text-3xl font-black mb-2 text-text-primary">¿Cómo está hoy tu peque?</h2>
       <p className="text-text-secondary text-lg mb-8 font-medium">Elige la señal que mejor encaje ahora mismo.</p>
       
@@ -374,7 +387,8 @@ export default function App() {
         exit={{ opacity: 0, x: -20 }}
         className="pt-4 pb-8"
       >
-        <div className="mb-6">
+      {renderBackButton()}
+      <div className="mb-6">
           <p className="text-brand-primary font-black uppercase tracking-widest text-sm mb-1">Para este momento, prueba esto</p>
           <div className="h-1 w-12 bg-brand-primary rounded-full" />
         </div>
